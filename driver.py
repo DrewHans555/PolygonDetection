@@ -3,7 +3,6 @@ OpenCV Documentation:  http://docs.opencv.org/3.0-beta/doc/py_tutorials/
 Numpy and Scipy Documentation:  https://docs.scipy.org/doc/
 '''
 
-import numpy as np
 import cv2
 import imutils
 
@@ -12,7 +11,7 @@ class CodeDriver:
     WEBCAM_WIDTH = 1280
     WEBCAM_HEIGHT = 720
     EPSILON_SCALAR = 0.04  # precision scalar for approximating polygon contours
-    RESIZE_WIDTH = 1280  # width in pixels for resizing images to a more managable size
+    RESIZE_WIDTH = 800  # width in pixels for resizing images to a more managable size
 
     # defines constructor for CodeDriver class
     def __init__(self):
@@ -35,28 +34,24 @@ class CodeDriver:
         print("image was read from project directory.")
 
         # show originalimg for testing purposes
-        cv2.imshow("Original image", originalimg)
+        cv2.imshow("Original Image Captured From Webcam", originalimg)
         cv2.waitKey(0)  # wait for key press when <= 0
 
         # use imutils to resize originalimg to a smaller factor so that the shapes can be approximated better
         resizedimg = imutils.resize(originalimg, width=self.RESIZE_WIDTH)
 
-        # show resizedimg for testing purposes
-        cv2.imshow("Resized image", resizedimg)
-        cv2.waitKey(0)  # wait for key press when <= 0
-
         # save the ratio of originalimg / resizedimg for drawing contours later
         ratio = originalimg.shape[0] / float(resizedimg.shape[0])
 
         print("Calling binarization method...")
-        threshimg = self.binarization(resizedimg)
+        binaryimg = self.binarization(resizedimg)
 
         # show threshimg for testing purposes
-        cv2.imshow("Image after Binarization", threshimg)
+        cv2.imshow("Image After Resize, Grayscale, GaussianBlur, OtsuThresholding, and Inversion", binaryimg)
         cv2.waitKey(0)  # wait for key press when <= 0
 
         print("Calling find_contours method...")
-        contours = self.find_contours(threshimg)
+        contours = self.find_contours(binaryimg)
 
         print("Calling identify_shape method...")
         self.identify_shape(originalimg, ratio, contours)
@@ -73,7 +68,7 @@ class CodeDriver:
 
         print("Begin VideoCapture and show webcam frames in window.")
 
-        while (loop):
+        while loop:
             # capture image from the webcam frame-by-frame
             ret, frame = webcam.read()
 
@@ -116,11 +111,8 @@ class CodeDriver:
         # perform otsu binarization - threshhold gaussianblurred with THRESH_BINARY
         otsuthreshimg = cv2.threshold(gaussianblurred, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
-        # perform bilateralFilter blur to remove noise while keeping edges sharp
-        bilateralfilterblurred = cv2.bilateralFilter(otsuthreshimg, 9, 75, 75)
-
         # threshhold bilateralfilterblurred with THRESH_BINARY_INV
-        threshimg = cv2.threshold(bilateralfilterblurred, 128, 255, cv2.THRESH_BINARY_INV)[1]
+        threshimg = cv2.threshold(otsuthreshimg, 128, 255, cv2.THRESH_BINARY_INV)[1]
 
         return threshimg
 
@@ -138,7 +130,7 @@ class CodeDriver:
 
         # for every group of contours (shape found) drawContours and putText over originalimg
         for c in threshimgcontours:
-            moments = cv2.moments(c)
+            moments = cv2.moments(c)  # a weighted average (moment) of the image pixels' intensities
             centerx = int((moments['m10'] / (moments['m00'] + 0.00001)) * ratio)  # find x-axis center of shape
             centery = int((moments['m01'] / (moments['m00'] + 0.00001)) * ratio)  # find y-axis center of shape
             shapename = self.detect_shape(c)
@@ -154,19 +146,18 @@ class CodeDriver:
             # parameters - putText(image, string, Point (xpos, ypos), fontFace, fontScale, color (R,G,B), thickness)
             cv2.putText(originalimg, shapename, (centerx, centery), cv2.FONT_HERSHEY_PLAIN, 1, (192, 112, 21), 2)
 
-            cv2.imshow("Original Image With ShapeName Overlay", originalimg)
+            cv2.imshow("Original Image With ShapeName & Contour Overlay", originalimg)
         cv2.waitKey(0)
 
     def detect_shape(self, contour):
         print("CodeDriver.detect_shape was called.")
 
-        shapename = "unknown"
+        shapename = "unknown"  # initialize shapename
 
         # approximate the contour along the perimeter of the shape
         perimeter = cv2.arcLength(contour, True)  # returns perimeter of the shape
         epsilon = self.EPSILON_SCALAR * perimeter  # accuracy parameter - the maximum distance from contour to approximation
-        approximation = cv2.approxPolyDP(contour, epsilon, True)  # approximates contour along epsilon
-        convexity = cv2.isContourConvex(contour)  # returns true if contour is convex / false is concave
+        approximation = cv2.approxPolyDP(contour, epsilon, True)  # approximates the real contours with epsilon (note true for close shapes, false for open shapes)
 
         if len(approximation) == 3:
             # if the approximation finds 3 vertices then a triangle has been found
@@ -174,46 +165,36 @@ class CodeDriver:
             print "Triangle was found"
         elif len(approximation) == 4:
             # if the approximation finds 4 vertices then a quadrilateral has been found
+            shapename = "quadrilateral"
             print "Quadrilateral was found"
-            if convexity:
-                (x, y, w, h) = cv2.boundingRect(approximation)  # find bounding box of contour
-                aspectratio = w / float(h)  # find aspect ratio of width / height
-
-                if 0.90 <= aspectratio <= 1.10:
-                    shapename = "square"
-                else:
-                    shapename = "rectangle"
-            else:
-                shapename = "quadrilateral"
-
         elif len(approximation) == 5:
             # if the approximation finds 5 vertices then a pentagon has been found
             shapename = "pentagon"
             print "Pentagon was found"
         elif len(approximation) == 6:
-            # if the approximation finds 4 vertices then a quadrilateral has been found
+            # if the approximation finds 4 vertices then a hexagon has been found
             shapename = "hexagon"
             print "Hexagon was found"
         elif len(approximation) == 7:
-            # if the approximation finds 5 vertices then a pentagon has been found
+            # if the approximation finds 5 vertices then a heptagon has been found
             shapename = "heptagon"
             print "Heptagon was found"
         elif len(approximation) == 8:
-            # if the approximation finds 4 vertices then a quadrilateral has been found
+            # if the approximation finds 4 vertices then a octagon has been found
             shapename = "octagon"
             print "Octagon was found"
         elif len(approximation) == 9:
-            # if the approximation finds 5 vertices then a pentagon has been found
+            # if the approximation finds 5 vertices then a nonagon has been found
             shapename = "nonagon"
             print "Nonagon was found"
         elif len(approximation) == 10:
-            # if the approximation finds 4 vertices then a quadrilateral has been found
+            # if the approximation finds 4 vertices then a decagon has been found
             shapename = "decagon"
             print "Decagon was found"
         else:
-            # if the approximation finds less than 3 vertices or more than 12 then we assume a circle has been found
-            shapename = "circle"
-            print "Circle was found"
+            # if the approximation finds less than 3 vertices or more than 10 then we assume an unknown polygon
+            shapename = "unknown"
+            print "Unknown Polygon"
 
         return shapename
 
