@@ -35,20 +35,20 @@ class CodeDriver:
         original_image = cv2.imread('test.bmp')
         print("image was read from project directory.")
 
-        # show originalimg for testing purposes
+        # show original_image for testing purposes
         cv2.imshow("Original Image Captured From Webcam", original_image)
         cv2.waitKey(0)  # wait for key press when <= 0
 
-        # use imutils to resize originalimg to a smaller factor so that the shapes can be approximated better
+        # use imutils to resize original_image to a smaller factor so that the shapes can be approximated better
         resized_image = imutils.resize(original_image, width=self.RESIZE_WIDTH)
 
-        # save the ratio of originalimg / resizedimg for drawing contours later
+        # save the ratio of original_image / resized_image for drawing contours later
         ratio = original_image.shape[0] / float(resized_image.shape[0])
 
         print("Calling CodeDriver.binarization method...")
         binary_image = self.binarization(resized_image)
 
-        # show binaryimg for testing purposes
+        # show binary_image for testing purposes
         cv2.imshow("Image After Resize, Grayscale, GaussianBlur, OtsuThreshold, and Inversion", binary_image)
         cv2.waitKey(0)  # wait for key press when <= 0
 
@@ -67,7 +67,6 @@ class CodeDriver:
         webcam.set(4, self.WEBCAM_HEIGHT)  # set video feed height
 
         print("Begin VideoCapture and show webcam frames in window.")
-
         while loop:
             ret, frame = webcam.read()  # capture image from the webcam frame-by-frame
             cv2.imshow('frame', frame)  # display the resulting frame from the webcam
@@ -112,7 +111,7 @@ class CodeDriver:
 
     def find_contours(self, binary_image):
         print("CodeDriver.find_contours was called.")
-        
+
         # parameters - findContours(InputOutputArray image, int retrievalMode, int ContourApproximationMethod)
         found_contours = cv2.findContours(binary_image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         countours = found_contours[1]  # note if using opencv1 use foundcontours[0]
@@ -121,76 +120,77 @@ class CodeDriver:
     def identify_shape(self, original_image, ratio, list_of_contours):
         print("CodeDriver.identify_shape was called.")
 
-        # for every group of contours (potential polygon) in list_of_contours
+        # for every group of contours in list_of_contours
         for c in list_of_contours:
             moments = cv2.moments(c)  # a weighted average (moment) of the image pixels' intensities
             centerx = int((moments['m10'] / (moments['m00'] + 0.00001)) * ratio)  # find x-axis center of polygon
             centery = int((moments['m01'] / (moments['m00'] + 0.00001)) * ratio)  # find y-axis center of polygon
-            
+
             print("Calling CodeDriver.detect_shape method...")
-            shapename = self.detect_shape(c)
+            polygon_name = self.detect_shape(c)
 
             # adjust the contour bounds found on the resized_image to the original_image
             c = c.astype("float")  # numpy casting to float for more precise adjustment
             c = c * ratio  # apply adjustment to the contour
             c = c.astype("int")  # numpy casting to int for cv2.drawContours
 
+            # draw contours over the original_image
             # parameters - drawContours(image, InputArrayOfArrays contours, contourIdx, color (R,G,B), thickness)
             cv2.drawContours(original_image, [c], -1, (21, 101, 192), 2)
 
+            # put the shape name over the original_image
             # parameters - putText(image, string, Point (xpos, ypos), fontFace, fontScale, color (R,G,B), thickness)
-            cv2.putText(original_image, shapename, (centerx, centery), cv2.FONT_HERSHEY_PLAIN, 1, (192, 112, 21), 2)
+            cv2.putText(original_image, polygon_name, (centerx, centery), cv2.FONT_HERSHEY_PLAIN, 1, (192, 112, 21), 2)
 
-            cv2.imshow("Original Image With ShapeName & Contour Overlay", original_image)
+            # show the original_image with contours and text overlay
+            cv2.imshow("Original Image With Overlay of Polygon Name & Contours", original_image)
         cv2.waitKey(0)  # wait for key press when <= 0
 
     def detect_shape(self, contours):
         print("CodeDriver.detect_shape was called.")
-        shapename = "unknown"  # initialize shapename
+        polygon_name = "unknown"  # initialize polygon_name
 
-        # approximate the contour along the perimeter of the shape
         perimeter = cv2.arcLength(contours, True)  # returns perimeter of the shape
-        epsilon = self.EPSILON_SCALAR * perimeter  # accuracy parameter - the maximum distance from contour to approximation
-        approximation = cv2.approxPolyDP(contours, epsilon, True)  # approximates the real contours with epsilon (note true for close shapes, false for open shapes)
+        epsilon = self.EPSILON_SCALAR * perimeter  # accuracy parameter for approximating the true contour
+        approximation = cv2.approxPolyDP(contours, epsilon, True)  # approximates the true contours along epsilon
 
         if len(approximation) == 3:
             # if the approximation finds 3 vertices then a triangle has been found
-            shapename = "triangle"
-            print "Triangle was found"
+            polygon_name = "triangle"
+            print("Triangle was found")
         elif len(approximation) == 4:
             # if the approximation finds 4 vertices then a quadrilateral has been found
-            shapename = "quadrilateral"
-            print "Quadrilateral was found"
+            polygon_name = "quadrilateral"
+            print("Quadrilateral was found")
         elif len(approximation) == 5:
             # if the approximation finds 5 vertices then a pentagon has been found
-            shapename = "pentagon"
-            print "Pentagon was found"
+            polygon_name = "pentagon"
+            print("Pentagon was found")
         elif len(approximation) == 6:
             # if the approximation finds 4 vertices then a hexagon has been found
-            shapename = "hexagon"
-            print "Hexagon was found"
+            polygon_name = "hexagon"
+            print("Hexagon was found")
         elif len(approximation) == 7:
             # if the approximation finds 5 vertices then a heptagon has been found
-            shapename = "heptagon"
-            print "Heptagon was found"
+            polygon_name = "heptagon"
+            print("Heptagon was found")
         elif len(approximation) == 8:
             # if the approximation finds 4 vertices then a octagon has been found
-            shapename = "octagon"
-            print "Octagon was found"
+            polygon_name = "octagon"
+            print("Octagon was found")
         elif len(approximation) == 9:
             # if the approximation finds 5 vertices then a nonagon has been found
-            shapename = "nonagon"
-            print "Nonagon was found"
+            polygon_name = "nonagon"
+            print("Nonagon was found")
         elif len(approximation) == 10:
             # if the approximation finds 4 vertices then a decagon has been found
-            shapename = "decagon"
-            print "Decagon was found"
+            polygon_name = "decagon"
+            print("Decagon was found")
         else:
             # if the approximation finds less than 3 vertices or more than 10 then we assume an unknown polygon
-            shapename = "unknown"
-            print "Unknown Polygon"
-
-        return shapename
+            polygon_name = "unknown"
+            print("Unknown Polygon")
+        return polygon_name
 
 
 driver = CodeDriver()
