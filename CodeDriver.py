@@ -167,23 +167,23 @@ class CodeDriver:
             polygon_name = "pentagon"
             print("Pentagon was found")
         elif len(approximation) == 6:
-            # if the approximation finds 4 vertices then a hexagon has been found
+            # if the approximation finds 6 vertices then a hexagon has been found
             polygon_name = "hexagon"
             print("Hexagon was found")
         elif len(approximation) == 7:
-            # if the approximation finds 5 vertices then a heptagon has been found
+            # if the approximation finds 7 vertices then a heptagon has been found
             polygon_name = "heptagon"
             print("Heptagon was found")
         elif len(approximation) == 8:
-            # if the approximation finds 4 vertices then a octagon has been found
+            # if the approximation finds 8 vertices then a octagon has been found
             polygon_name = "octagon"
             print("Octagon was found")
         elif len(approximation) == 9:
-            # if the approximation finds 5 vertices then a nonagon has been found
+            # if the approximation finds 9 vertices then a nonagon has been found
             polygon_name = "nonagon"
             print("Nonagon was found")
         elif len(approximation) == 10:
-            # if the approximation finds 4 vertices then a decagon has been found
+            # if the approximation finds 10 vertices then a decagon has been found
             polygon_name = "decagon"
             print("Decagon was found")
         else:
